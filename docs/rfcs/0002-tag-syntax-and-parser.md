@@ -1,9 +1,10 @@
 ---
 RFC: 0002
 Title: Tag syntax and parser strategy
-Status: Draft
+Status: Accepted
 Author: Engineering Manager (Claude) on behalf of MDC
 Created: 2026-05-21
+Accepted: 2026-05-21
 Resolves: RFC-0001 Open Questions 1 & 2, Risks #1 & #2; commits to a parser strategy
 ---
 
@@ -59,7 +60,7 @@ Parser property tests must cover values with newlines, quotes, `>`, the `--` seq
 | Goldmark default (`glow` → glamour) | "By default, goldmark does not render raw HTML" — comments dropped  | ✅ Confirmed via goldmark README                                                                                    |
 | VSCode markdown preview (markdown-it) | All `mdc:*` tags hidden; body text only                            | ✅ **Confirmed by user 2026-05-21** — third independent renderer agreeing                                            |
 | GitHub web (GFM)                    | GFM §4.6 strips HTML comments; sanitizer drops them                 | ✅ **Confirmed by user 2026-05-21** on the PR's rendered view of `fixtures/syntax-test/all-syntaxes.md`             |
-| Obsidian Reading View               | Native is `%% %%`; HTML comments widely reported hidden             | ⏳ **Not confirmed.** Subagent could not reach Obsidian docs (404s on the comments help page). User action needed.  |
+| Obsidian Reading View               | HTML comments hidden                                                 | ✅ **Confirmed by user 2026-05-21**. Note: Obsidian *Live Preview* (editing mode) does show HTML comments as faded source — intentional and useful for authors editing the file. |
 
 ## Why not custom XML-like tags (Option B)
 
@@ -95,7 +96,8 @@ Forking inherits the regex foundation we'd throw away. Writing on `remark` + `un
 | Glow leaks Option B body content                      | ✅ Confirmed locally — disqualifies B for threads (VSCode re-confirms)                            |
 | Glow renders Option C literally                       | ✅ Confirmed locally — disqualifies C (VSCode re-confirms)                                        |
 | GitHub web hides Option A                             | ✅ Confirmed by user 2026-05-21 — fourth independent renderer (GFM sanitizer)                     |
-| Obsidian Reading View hides Option A                  | ⏳ Reasoned likely; subagent could not confirm — **user action requested**                        |
+| Obsidian Reading View hides Option A                  | ✅ Confirmed by user 2026-05-21 — fifth independent renderer (Obsidian)                           |
+| Obsidian Live Preview shows Option A as faded source  | ✅ Noted as intentional editing-mode behavior; mirrors Obsidian's own `%% %%` source-on-edit shape |
 | Attribute escape policy holds under round-trip stress | ⏳ Will be covered by parser property tests in Phase 1                                            |
 
 The fixture `fixtures/syntax-test/all-syntaxes.md` is the test artifact. Two cheap things close the remaining cells: drop the file into an Obsidian vault and a GitHub gist, eyeball the rendered output. If either leaks, this RFC must be revised before acceptance.
@@ -108,11 +110,12 @@ The fixture `fixtures/syntax-test/all-syntaxes.md` is the test artifact. Two che
 
 # Definition of done
 
-This RFC moves to `Accepted` when:
+- [x] User confirmed Obsidian Reading View hides Option A on `fixtures/syntax-test/all-syntaxes.md` (2026-05-21)
+- [x] User confirmed GitHub web hides Option A via the PR's rendered file view (2026-05-21)
+- [x] VSCode markdown-it preview hides Option A (2026-05-21)
+- [x] Glow / goldmark hides Option A (confirmed locally 2026-05-21)
 
-- [ ] User confirms Obsidian Reading View hides Option A on `fixtures/syntax-test/all-syntaxes.md`
-- [ ] User (or a follow-up verification step) confirms GitHub web hides Option A in a real PR or gist context
-- [ ] If either fails, this RFC is updated with the failure mode and a revised recommendation before acceptance
+All gating verifications passed. RFC moved to Accepted 2026-05-21.
 
 # References
 
