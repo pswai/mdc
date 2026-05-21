@@ -92,7 +92,7 @@ This is `claude-review`'s shape minus the database and minus the Claude-Code-spe
 
 These must be resolved (with recommendations and tradeoffs presented to the user) before code lands. Recommendations are mine; the user decides.
 
-1. **Tag syntax — HTML comments vs `<annotation>` tags.** Pending research subagent's report at `docs/research/0001-format-and-parser.md`. Recommendation will go in **RFC-0002**.
+1. **Tag syntax — HTML comments vs `<annotation>` tags.** Resolved in [RFC-0002](./0002-tag-syntax-and-parser.md): HTML comments with structured attributes, parser written on `remark` + `unified` (not `comment-md`). RFC-0002 is Draft pending user-side Obsidian and GitHub verification.
 2. **ID generation.** Recommend 6-char base32 (`a1f7q3`) with collision check on insert. UUID is too long for casual reference. Tradeoff: 6 chars × 32 alphabet = ~1B IDs, ample headroom for single-file annotation density.
 3. **Suggestion conflict policy.** Recommend: if `old text` no longer matches when accepted, **fail loud**, print the conflict, require manual resolution. Never auto-merge. Tradeoff: more friction for humans editing concurrently with AI suggestions; safer correctness — aligns with [Commitment 1].
 4. **Resolved comment policy.** Recommend: keep in file with `status=resolved` by default; `mdc compact` strips. Tradeoff: file grows; preserves history (which is the point of [Commitment 1]).
