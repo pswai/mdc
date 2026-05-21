@@ -109,9 +109,10 @@ v0 ships when **all** of these hold:
 - [ ] `mdc accept file.md <id>` applies the suggestion, removes the tag
 - [ ] `mdc read file.md --clean` returns body with all `mdc:*` tags stripped
 - [ ] `mdc serve file.md` opens a browser preview with inline comments, accept/reject buttons, live reload
-- [ ] Round-trip property test: `serialize(parse(x)) === x` over fixtures including frontmatter, nested lists, code blocks, tables, GFM
+- [ ] Round-trip property test passes on input fixtures (frontmatter, nested lists, code blocks, tables, GFM): `serialize(parse(x)) === x`
+- [ ] **CLI idempotence property test passes:** after any sequence of `mdc comment / suggest / accept / reject / resolve`, a second `parse → serialize` cycle is byte-identical to the first. This is the property that protects against the `comment-md` trap (see RFC-0002 evidence); the input-fixture round-trip alone is necessary but insufficient.
 - [ ] README with a quick start
-- [ ] A 5-minute demo session: human opens a `.md` in their editor of choice, asks any agent (CC, Cursor, Aider — at least two tested) to draft, runs `mdc serve`, leaves comments, asks the agent to address them, accepts/rejects suggestions. The loop feels natural enough to use for the next two weeks.
+- [ ] **Two harnesses pass the same demo script.** At least two of {Claude Code, Cursor, Aider} independently complete draft → comment → address → accept/reject using only the documented v0 CLI (`mdc comment`, `mdc suggest`, `mdc accept`, `mdc read --clean`) with **no harness-specific shim or wrapper**. The demo script is identical across harnesses; a pass means each harness completes the loop in a single session without modifications to its prompt-side configuration.
 
 Then we use it for two weeks. Then we decide what hurts.
 

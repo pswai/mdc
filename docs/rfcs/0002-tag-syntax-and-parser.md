@@ -24,8 +24,10 @@ Body text here, may include line breaks and basic markdown.
 -->
 
 <!--mdc:sug id=s1 by=ai
--old text
-+new text
+old:
+old text
+new:
+new text
 -->
 ```
 
@@ -39,6 +41,10 @@ We do not depend on or fork `comment-md`. We take its tag-shape concept and its 
 
 6-character base32 IDs (e.g., `a1f7q3`), collision-checked at insertion against existing IDs in the file. Resolves RFC-0001 Open Question 2.
 
+**Collision policy.** On collision at insertion, the CLI retries with a fresh random ID up to 20 times before erroring loudly. With ~1B IDs per file, 20 consecutive collisions implies a corrupt RNG or pathological annotation density — both worth surfacing rather than silently extending.
+
+**Cross-file references are out of scope for v0.** The 6-character namespace is per-file. **v1 needs cross-file references** (e.g., `chapter-1.md#a1f7q3`, or a widened namespace, or both) — flagged here so future RFCs treat it as load-bearing, not optional. No code or syntax reservation in v0; this is a deliberate deferral, not an oversight.
+
 ## 4. Attribute escape
 
 HTML comment bodies do not support standard quoting. Our convention:
@@ -48,7 +54,26 @@ HTML comment bodies do not support standard quoting. Our convention:
 - `-->` is the **single forbidden sequence** inside any attribute value or comment body
 - Multi-line bodies (for comments and suggestions) are delimited by the line break after the opening attributes and the closing `-->`
 
+**CLI rejection policy.** The CLI rejects any user-supplied attribute value or body containing `-->`, with a clear error message. Consistent with RFC-0001 Decision 3 (fail loud; never auto-merge / never silently escape user input). Authors who need `-->` in their content edit the markdown directly; the CLI does not mangle.
+
 Parser property tests must cover values with newlines, quotes, `>`, the `--` sequence, and nested HTML comments (illegal — must error loudly).
+
+## 5. Suggestion body format
+
+Suggestions use explicit `old:` / `new:` blocks rather than unified-diff `-/+` markers. The diff form is ambiguous when old/new content legitimately begins with `-` or `+` — common in markdown lists — and resolving that ambiguity would require an escape policy we'd rather not own. Explicit blocks avoid the problem entirely.
+
+```markdown
+<!--mdc:sug id=s1 by=ai
+old:
+- first list item
+- second list item
+new:
+- first list item
+- second list item, revised
+-->
+```
+
+Body grammar: the literal line `old:` opens the old-text block; the literal line `new:` opens the new-text block. Either block may be empty (pure insertion or pure deletion). Trailing newlines inside each block are preserved verbatim. The forbidden sequence `-->` inside either block is rejected by the CLI per §4.
 
 # Evidence
 
