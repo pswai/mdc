@@ -53,12 +53,13 @@ Parser property tests must cover values with newlines, quotes, `>`, the `--` seq
 
 ## Why HTML comments (Option A)
 
-| Renderer                        | Behavior                                                                                          | Status                                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `glow` 2.x                      | All `mdc:*` tags hidden; no whitespace artifacts                                                  | ✅ **Confirmed locally:** `glow -s notty fixtures/syntax-test/all-syntaxes.md` shows only body text                   |
-| Goldmark default (`glow` → glamour) | "By default, goldmark does not render raw HTML" — comments dropped                                | ✅ Confirmed via goldmark README                                                                                      |
-| GitHub web (GFM)                | GFM §4.6 strips HTML comments; sanitizer drops them                                               | ⏳ Spec-confirmed; **gist/PR verification still required** (auto-mode denied my gist creation — user action needed)   |
-| Obsidian Reading View           | Native is `%% %%`; HTML comments widely reported hidden                                           | ⏳ **Not confirmed.** Subagent could not reach Obsidian docs (404s on the comments help page). User action needed.    |
+| Renderer                            | Behavior                                                            | Status                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `glow` 2.x                          | All `mdc:*` tags hidden; no whitespace artifacts                    | ✅ **Confirmed locally:** `glow -s notty fixtures/syntax-test/all-syntaxes.md` shows only body text                 |
+| Goldmark default (`glow` → glamour) | "By default, goldmark does not render raw HTML" — comments dropped  | ✅ Confirmed via goldmark README                                                                                    |
+| VSCode markdown preview (markdown-it) | All `mdc:*` tags hidden; body text only                            | ✅ **Confirmed by user 2026-05-21** — third independent renderer agreeing                                            |
+| GitHub web (GFM)                    | GFM §4.6 strips HTML comments; sanitizer drops them                 | ⏳ Spec-confirmed; **gist/PR verification still required** (auto-mode denied my gist creation — user action needed) |
+| Obsidian Reading View               | Native is `%% %%`; HTML comments widely reported hidden             | ⏳ **Not confirmed.** Subagent could not reach Obsidian docs (404s on the comments help page). User action needed.  |
 
 ## Why not custom XML-like tags (Option B)
 
@@ -87,14 +88,15 @@ Forking inherits the regex foundation we'd throw away. Writing on `remark` + `un
 
 # Verification status
 
-| Item                                                | Status                                                                                                             |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Glow / goldmark hides Option A                      | ✅ Confirmed locally                                                                                               |
-| Glow leaks Option B body content                    | ✅ Confirmed locally — disqualifies B for threads                                                                  |
-| Glow renders Option C literally                     | ✅ Confirmed locally — disqualifies C                                                                              |
-| GitHub web hides Option A                           | ⏳ Spec-confirmed; gist verification blocked by auto-mode classifier — **user action requested**                   |
-| Obsidian Reading View hides Option A                | ⏳ Reasoned likely; subagent could not confirm — **user action requested**                                         |
-| Attribute escape policy holds under round-trip stress | ⏳ Will be covered by parser property tests in Phase 1                                                            |
+| Item                                                  | Status                                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Glow / goldmark hides Option A                        | ✅ Confirmed locally                                                                              |
+| VSCode markdown preview hides Option A                | ✅ Confirmed by user 2026-05-21 — third independent renderer (markdown-it engine)                 |
+| Glow leaks Option B body content                      | ✅ Confirmed locally — disqualifies B for threads (VSCode re-confirms)                            |
+| Glow renders Option C literally                       | ✅ Confirmed locally — disqualifies C (VSCode re-confirms)                                        |
+| GitHub web hides Option A                             | ⏳ Spec-confirmed; gist verification blocked by auto-mode classifier — **user action requested**  |
+| Obsidian Reading View hides Option A                  | ⏳ Reasoned likely; subagent could not confirm — **user action requested**                        |
+| Attribute escape policy holds under round-trip stress | ⏳ Will be covered by parser property tests in Phase 1                                            |
 
 The fixture `fixtures/syntax-test/all-syntaxes.md` is the test artifact. Two cheap things close the remaining cells: drop the file into an Obsidian vault and a GitHub gist, eyeball the rendered output. If either leaks, this RFC must be revised before acceptance.
 
