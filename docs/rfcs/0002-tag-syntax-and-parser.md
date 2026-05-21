@@ -4,7 +4,7 @@ Title: Tag syntax and parser strategy
 Status: Draft
 Author: Engineering Manager (Claude) on behalf of MDC
 Created: 2026-05-21
-Resolves: RFC-0001 Open Question 1; commits to a parser strategy
+Resolves: RFC-0001 Open Questions 1 & 2, Risks #1 & #2; commits to a parser strategy
 ---
 
 # Summary

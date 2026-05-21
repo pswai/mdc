@@ -93,7 +93,7 @@ This is `claude-review`'s shape minus the database and minus the Claude-Code-spe
 These must be resolved (with recommendations and tradeoffs presented to the user) before code lands. Recommendations are mine; the user decides.
 
 1. **Tag syntax — HTML comments vs `<annotation>` tags.** Resolved in [RFC-0002](./0002-tag-syntax-and-parser.md): HTML comments with structured attributes, parser written on `remark` + `unified` (not `comment-md`). RFC-0002 is Draft pending user-side Obsidian and GitHub verification.
-2. **ID generation.** Recommend 6-char base32 (`a1f7q3`) with collision check on insert. UUID is too long for casual reference. Tradeoff: 6 chars × 32 alphabet = ~1B IDs, ample headroom for single-file annotation density.
+2. **ID generation.** Resolved in [RFC-0002 §3](./0002-tag-syntax-and-parser.md#3-id-generation): 6-character base32 with collision check on insertion.
 3. **Suggestion conflict policy.** Recommend: if `old text` no longer matches when accepted, **fail loud**, print the conflict, require manual resolution. Never auto-merge. Tradeoff: more friction for humans editing concurrently with AI suggestions; safer correctness — aligns with [Commitment 1].
 4. **Resolved comment policy.** Recommend: keep in file with `status=resolved` by default; `mdc compact` strips. Tradeoff: file grows; preserves history (which is the point of [Commitment 1]).
 5. **Provenance on the document body.** Recommend: **skip in v0.** Comments and suggestions carry `by=ai|human`; body spans do not. Tension with the manifesto vision (which calls out provenance as a gap), but adding it now bloats the format. Revisit in a future RFC.
@@ -118,8 +118,8 @@ Then we use it for two weeks. Then we decide what hurts.
 
 These are noted now so we engage them rather than discover them late:
 
-1. **comment-md is 2 stars.** "Don't reimplement what exists" is right in principle, but a low-adoption dependency may be effectively dead. The research subagent will return a verdict. If it cannot be depended on cleanly, we fork (preserving attribution) rather than reinvent.
-2. **HTML comments in GitHub.** GitHub renders some HTML comments fine in document view but exposes them in raw view and in some embedded contexts. Real testing required; see Open Question 1.
+1. **comment-md viability.** Resolved in [RFC-0002](./0002-tag-syntax-and-parser.md): own parser on `remark` + `unified`; `comment-md` is neither depended on nor forked. We reuse only its tag-shape concept and its `exportAiView` pattern.
+2. **HTML comments in GitHub / Obsidian.** Verification tracked in [RFC-0002 §Verification status](./0002-tag-syntax-and-parser.md#verification-status); pending hands-on confirmation on GitHub web and Obsidian Reading View before RFC-0002 moves to Accepted.
 3. **Demo couples to Claude Code in the proposal.** The DoD here softens this to "at least two harnesses tested" to honor [Commitment 3].
 4. **"Two weeks of dogfood, then decide" is not a metric.** Acceptable for v0, but v1 needs honest success criteria. Out of scope for this RFC.
 
