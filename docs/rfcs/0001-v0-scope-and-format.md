@@ -1,9 +1,10 @@
 ---
 RFC: 0001
 Title: MDC v0 — Format, CLI, and Preview
-Status: Draft
+Status: Accepted
 Author: Engineering Manager (Claude) on behalf of MDC
 Created: 2026-05-21
+Accepted: 2026-05-21
 Supersedes: —
 ---
 
@@ -88,15 +89,15 @@ This is `claude-review`'s shape minus the database and minus the Claude-Code-spe
 - Prettier, 2 spaces
 - No CRDT, no database, no auth, no server-side state beyond the running process
 
-# Open questions
+# Decisions
 
-These must be resolved (with recommendations and tradeoffs presented to the user) before code lands. Recommendations are mine; the user decides.
+Items 1–2 are resolved by RFC-0002. Items 3–5 were EM recommendations accepted by the user on 2026-05-21.
 
 1. **Tag syntax — HTML comments vs `<annotation>` tags.** Resolved in [RFC-0002](./0002-tag-syntax-and-parser.md): HTML comments with structured attributes, parser written on `remark` + `unified` (not `comment-md`). RFC-0002 is Draft pending user-side Obsidian and GitHub verification.
 2. **ID generation.** Resolved in [RFC-0002 §3](./0002-tag-syntax-and-parser.md#3-id-generation): 6-character base32 with collision check on insertion.
-3. **Suggestion conflict policy.** Recommend: if `old text` no longer matches when accepted, **fail loud**, print the conflict, require manual resolution. Never auto-merge. Tradeoff: more friction for humans editing concurrently with AI suggestions; safer correctness — aligns with [Commitment 1].
-4. **Resolved comment policy.** Recommend: keep in file with `status=resolved` by default; `mdc compact` strips. Tradeoff: file grows; preserves history (which is the point of [Commitment 1]).
-5. **Provenance on the document body.** Recommend: **skip in v0.** Comments and suggestions carry `by=ai|human`; body spans do not. Tension with the manifesto vision (which calls out provenance as a gap), but adding it now bloats the format. Revisit in a future RFC.
+3. **Suggestion conflict policy.** Decision: if `old text` no longer matches when accepted, **fail loud**, print the conflict, require manual resolution. Never auto-merge. Tradeoff: more friction for humans editing concurrently with AI suggestions; safer correctness — aligns with [Commitment 1].
+4. **Resolved comment policy.** Decision: keep in file with `status=resolved` by default; `mdc compact` strips. Tradeoff: file grows; preserves history (which is the point of [Commitment 1]).
+5. **Provenance on the document body.** Decision: **skip in v0.** Comments and suggestions carry `by=ai|human`; body spans do not. Tension with the manifesto vision (which calls out provenance as a gap), but adding it now bloats the format. Revisit in a future RFC.
 
 # Definition of done
 
