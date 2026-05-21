@@ -58,7 +58,7 @@ Parser property tests must cover values with newlines, quotes, `>`, the `--` seq
 | `glow` 2.x                          | All `mdc:*` tags hidden; no whitespace artifacts                    | ✅ **Confirmed locally:** `glow -s notty fixtures/syntax-test/all-syntaxes.md` shows only body text                 |
 | Goldmark default (`glow` → glamour) | "By default, goldmark does not render raw HTML" — comments dropped  | ✅ Confirmed via goldmark README                                                                                    |
 | VSCode markdown preview (markdown-it) | All `mdc:*` tags hidden; body text only                            | ✅ **Confirmed by user 2026-05-21** — third independent renderer agreeing                                            |
-| GitHub web (GFM)                    | GFM §4.6 strips HTML comments; sanitizer drops them                 | ⏳ Spec-confirmed; **gist/PR verification still required** (auto-mode denied my gist creation — user action needed) |
+| GitHub web (GFM)                    | GFM §4.6 strips HTML comments; sanitizer drops them                 | ✅ **Confirmed by user 2026-05-21** on the PR's rendered view of `fixtures/syntax-test/all-syntaxes.md`             |
 | Obsidian Reading View               | Native is `%% %%`; HTML comments widely reported hidden             | ⏳ **Not confirmed.** Subagent could not reach Obsidian docs (404s on the comments help page). User action needed.  |
 
 ## Why not custom XML-like tags (Option B)
@@ -94,7 +94,7 @@ Forking inherits the regex foundation we'd throw away. Writing on `remark` + `un
 | VSCode markdown preview hides Option A                | ✅ Confirmed by user 2026-05-21 — third independent renderer (markdown-it engine)                 |
 | Glow leaks Option B body content                      | ✅ Confirmed locally — disqualifies B for threads (VSCode re-confirms)                            |
 | Glow renders Option C literally                       | ✅ Confirmed locally — disqualifies C (VSCode re-confirms)                                        |
-| GitHub web hides Option A                             | ⏳ Spec-confirmed; gist verification blocked by auto-mode classifier — **user action requested**  |
+| GitHub web hides Option A                             | ✅ Confirmed by user 2026-05-21 — fourth independent renderer (GFM sanitizer)                     |
 | Obsidian Reading View hides Option A                  | ⏳ Reasoned likely; subagent could not confirm — **user action requested**                        |
 | Attribute escape policy holds under round-trip stress | ⏳ Will be covered by parser property tests in Phase 1                                            |
 
