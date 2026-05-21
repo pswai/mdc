@@ -103,6 +103,44 @@ Coverage targets get gamed; *categories* don't.
 - **Implementations in additional languages** for v0 (Python, Go, Swift, etc.). vNext if adoption demands.
 - **A unified plugin API across host parsers.** The remark and markdown-it ecosystems have different idioms; we honor each rather than impose a lowest-common-denominator.
 
+# Distribution
+
+How implementations reach users is a first-class concern, not an afterthought. Dual-impl makes this concrete because both surfaces need a credible install story.
+
+## Rust reference (CLI + crate)
+
+Distribution channels for v0:
+
+- **`cargo install mdc`** — for Rust users. Requires Rust toolchain on the target. Smallest setup for the developer audience but excludes non-Rust users.
+- **GitHub Releases** — pre-built static binaries for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, `aarch64-darwin`, `x86_64-windows-msvc`. Produced by CI on tag push. Single binary, no runtime deps.
+- **`curl <release-url>/install.sh | sh`** — wraps the GitHub Release download. Domain decision deferred; v0 may use the raw GitHub Releases URL.
+- **Homebrew tap** — `brew install mdc/tap/mdc` from a project-owned tap; contribution to `homebrew-core` after some traction. **v0 stretch goal**, not blocker.
+
+The `mdc-core` crate is published to `crates.io` for embedding in other Rust projects.
+
+## TypeScript reference (npm)
+
+- **`npm install @mdc/parser`** — published to the npm registry under the `@mdc` scope.
+- ESM-first; CJS interop only if cheap. TS types bundled in the package.
+- Zero hard runtime dependencies (target). Optional plugin packages (`@mdc/remark`, `@mdc/markdown-it` — see Open Question 2) take their host parser as a `peerDependency` rather than bundling it.
+- npm provenance attestation enabled — defense in depth against the worm-class attack that motivated the dual-impl approach in the first place.
+
+## Coordinated versioning
+
+Both implementations publish the **same version number** (e.g., `0.1.0`). A release tag triggers CI for both; the tag is only promoted to published artifacts if both impls pass the shared `/fixtures/` corpus.
+
+- **Major bump** — breaking format changes. RFC required.
+- **Minor bump** — additive features, backward-compatible format changes.
+- **Patch bump** — bug fixes; no format changes.
+
+Implementations may carry impl-local patch versions (e.g., a Rust-only parser bugfix as `0.1.0+rust.1`) but the format version is the shared digit before any `+` suffix. Any change that requires bumping the shared digit requires both impls to ship synchronously.
+
+## Out of scope for v0
+
+- Container images bundling `mdc`. Adopters install from release binaries in their Dockerfile.
+- Plugin registries or discoverability sites.
+- `mdc init` and other onboarding tooling — deferred to **RFC-0004** (usage and ergonomics).
+
 # Amendments to prior RFCs
 
 ## RFC-0001 §Stack — replaced
