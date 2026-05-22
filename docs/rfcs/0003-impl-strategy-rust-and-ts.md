@@ -1,9 +1,10 @@
 ---
 RFC: 0003
 Title: Implementation strategy — spec-first, two reference impls (Rust + TypeScript)
-Status: Draft
+Status: Accepted
 Author: Engineering Manager (Claude) on behalf of MDC
 Created: 2026-05-21
+Accepted: 2026-05-22
 Amends: RFC-0001 §Stack; RFC-0002 §2 (Parser)
 ---
 
@@ -46,13 +47,13 @@ A host markdown library is needed only for `mdc serve` (the preview server's ren
 
 - `mdc-core` exposes the parser as a library (`crates/mdc-core/`)
 - `mdc` is the CLI binary, distributed via `cargo install`, Homebrew, and a single-file release artifact (`crates/mdc-cli/`)
-- The preview server (`mdc serve`) lives here and depends on a host markdown library (pending [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md))
+- The preview server (`mdc serve`) lives here. Host markdown library: **`comrak`** with `default-features = false` to avoid the heavy `onig`/`syntect` chain by default; opt in only to what we need. `pulldown-cmark` is the documented fallback if comrak's footprint still proves too large after stripping. Evidence: [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md)
 
 ### 3.2 TypeScript — `@mdc/parser` npm package
 
 - `@mdc/parser` is the TS-native, dep-minimal parser package
 - Adopters in any JS markdown ecosystem (remark, markdown-it, micromark, custom) import `@mdc/parser` and integrate MDC annotations into their tooling
-- Whether v0 also ships `@mdc/remark` and/or `@mdc/markdown-it` plugin packages is pending [`docs/research/0003-js-plugins.md`](../research/0003-js-plugins.md)
+- **Decision: ship `@mdc/parser` only.** Plugin glue (~30 LOC each) lives as documented examples in `docs/examples/`, not as published packages. Promotion from example to published package later is cheap; deprecation is not. Evidence: [`docs/research/0003-js-plugins.md`](../research/0003-js-plugins.md)
 
 ## 4. Shared fixture corpus
 
@@ -158,21 +159,22 @@ The TypeScript-only stack is replaced. Once this RFC is Accepted:
 
 The decision "own implementation on `remark` + `unified`" is replaced by "own implementation, dual-language, markdown-agnostic core." The rest of RFC-0002 (HTML-comment syntax, IDs, escape policy, suggestion shape) is unaffected by this RFC.
 
-# Open questions
+# Decisions (formerly open questions)
 
-1. **Rust host markdown library** for `mdc serve` — `comrak` vs `markdown-rs` vs `pulldown-cmark`. Research pending at [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md).
-2. **JS plugin packages** for v0 — ship `@mdc/parser` alone, `@mdc/parser` + one plugin (which?), or `@mdc/parser` + both. Research pending at [`docs/research/0003-js-plugins.md`](../research/0003-js-plugins.md).
-3. **Rust web framework** for preview server — `axum`, `actix-web`, or `tide`. Deferred until v0 reaches preview-server work; lock then.
+1. **Rust host markdown library**: `comrak` with `default-features = false`. User-accepted 2026-05-22. `pulldown-cmark` is the documented fallback if comrak's footprint proves too large. Evidence: [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md).
+2. **JS plugin packages**: ship `@mdc/parser` only; plugins as ~30-LOC examples in `docs/examples/`. User-accepted 2026-05-22. Evidence: [`docs/research/0003-js-plugins.md`](../research/0003-js-plugins.md).
+3. **Test bar** (§Test bar above): accepted as written. User-accepted 2026-05-22.
+4. **Rust web framework** for preview server — `axum`, `actix-web`, or `tide`. Deferred until v0 reaches preview-server work.
 
 # Definition of done
 
-This RFC moves to `Accepted` when:
+- [x] `docs/research/0003-rust-markdown.md` returned: `comrak` recommended (user-accepted 2026-05-22)
+- [x] `docs/research/0003-js-plugins.md` returned: ship `@mdc/parser` only (user-accepted 2026-05-22)
+- [x] Test bar accepted (user-accepted 2026-05-22)
+- [x] RFC-0001 §Stack amendment applied
+- [x] RFC-0002 §2 amendment applied
 
-- [ ] `docs/research/0003-rust-markdown.md` returns a recommendation; user accepts
-- [ ] `docs/research/0003-js-plugins.md` returns a recommendation; user accepts
-- [ ] Test bar above accepted (or amended with user input)
-- [ ] RFC-0001 §Stack amendment text reviewed
-- [ ] RFC-0002 §2 amendment text reviewed
+All gating items resolved. Status moved to Accepted 2026-05-22.
 
 # References
 
