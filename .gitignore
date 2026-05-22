@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Rust (when added in Phase 1)
+target/
+
+# Node / TS (when added in Phase 1)
+node_modules/
+*.tsbuildinfo
+dist/
+build/
+*.log

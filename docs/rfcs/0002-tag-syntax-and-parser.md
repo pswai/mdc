@@ -33,9 +33,11 @@ new text
 
 One shape covers anchors, comments, and suggestions, distinguished by the `mdc:*` prefix on the first token.
 
-## 2. Parser: own implementation on `remark` + `unified`
+## 2. Parser: own implementation, dual-language, markdown-agnostic core
 
 We do not depend on or fork `comment-md`. We take its tag-shape concept and its `exportAiView` pattern (strip resolved annotations before feeding to an LLM); we leave its code behind. (Evidence below.)
+
+**Amended by [RFC-0003](./0003-impl-strategy-rust-and-ts.md):** the original "own implementation on `remark` + `unified`" wording is replaced. The MDC parser is intentionally **markdown-agnostic** — it scans for `<!--mdc:* ...-->` HTML comments and tracks byte positions; it does not parse markdown structure. This makes the parser small enough to maintain as two reference implementations: a Rust crate (`mdc-core`) powering the `mdc` CLI binary, and a TypeScript package (`@mdc/parser`) for the JS/TS ecosystem. Both validate against the shared `/fixtures/` corpus. The host markdown library (for `mdc serve` rendering) is a Rust-side concern only, handled in RFC-0003.
 
 ## 3. ID generation
 

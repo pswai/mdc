@@ -82,12 +82,20 @@ This is `claude-review`'s shape minus the database and minus the Claude-Code-spe
 
 # Stack
 
-- TypeScript + Node 20+
-- Parser: `remark` + `unified` (pending RFC-0002: whether we depend on `comment-md`, fork it, or write our own plugin)
-- Preview: small Hono server + native file watcher + SSE
-- Renderer: `remark` → `rehype` → server-rendered HTML; client-side hydration only for the comment/suggest UI
-- Prettier, 2 spaces
+This section is **amended by [RFC-0003](./0003-impl-strategy-rust-and-ts.md)** (spec-first, dual reference impls).
+
+Locked elements:
+
 - No CRDT, no database, no auth, no server-side state beyond the running process
+
+Pending RFC-0003 acceptance:
+
+- **Reference CLI:** Rust (motivated by static-binary distribution + npm supply-chain considerations). `cargo install`, Homebrew, single-file release artifact.
+- **Reference npm:** TypeScript, dep-minimal (target zero runtime deps). For JS/TS adopters: VS Code extensions, Obsidian plugins, GitHub Apps, browser editors.
+- **MDC parser core:** markdown-agnostic; scans for HTML-comment annotations with byte positions. Same algorithm, two languages.
+- **Preview server (`mdc serve`):** Rust, host markdown library TBD (pending RFC-0003 research).
+- **Test runners:** `cargo test` + `proptest` + `insta` + `cargo fuzz` (Rust); `vitest` + `fast-check` (TS). Both validate against `/fixtures/` corpus.
+- **Formatting:** `rustfmt` (Rust); Prettier, 2 spaces (TS).
 
 # Decisions
 
