@@ -47,7 +47,7 @@ A host markdown library is needed only for `mdc serve` (the preview server's ren
 
 - `mdc-core` exposes the parser as a library (`crates/mdc-core/`)
 - `mdc` is the CLI binary, distributed via `cargo install`, Homebrew, and a single-file release artifact (`crates/mdc-cli/`)
-- The preview server (`mdc serve`) lives here. Host markdown library: **`comrak`** with `default-features = false` to avoid the heavy `onig`/`syntect` chain by default; opt in only to what we need. `pulldown-cmark` is the documented fallback if comrak's footprint still proves too large after stripping. Evidence: [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md)
+- The preview server (`mdc serve`) lives here. Host markdown library: **`comrak`** is the chosen candidate with `default-features = false` to avoid the heavy `onig`/`syntect` chain. **Tentative pending Phase 1 measurement** (`cargo bloat` / `cargo tree -d` on a real `mdc serve` starter binary) — the research at [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md) flagged that the footprint assessment was inspection, not measurement. If comrak with default features off is still too heavy, we fall back to **`pulldown-cmark`** with the explicit known cost of building our own frontmatter stripper + `syntect` wrapper (frontmatter is in scope per RFC-0001 DoD)
 
 ### 3.2 TypeScript — `@mdc/parser` npm package
 
@@ -73,6 +73,8 @@ A change requiring both implementations updates must:
 - Update one and open a tracking issue for the other, with a 7-day deadline. CI on the lagging implementation is failing during this window; merges to that area are blocked until the second update lands.
 
 If an implementation falls behind the spec for any reason, the failing CI gates merges from any branch touching the affected area. There is no "we'll catch up later" path.
+
+**Spec rollback as the escape valve.** If the lagging impl genuinely cannot meet the 7-day deadline (e.g., a spec change exposed a parser-engine bug we can't fix in time), the spec change is **reverted**, not papered over. The EM opens a "spec rollback or deadline extension" RFC for user approval at day 5; reaching day 7 with no resolution defaults to revert. No "temporary workaround in one impl" path exists — that would violate Commitment 1 (the file format is the truth).
 
 # Test bar (resolves the user's emphasis on test quality + quantity)
 
@@ -132,9 +134,11 @@ Both implementations publish the **same version number** (e.g., `0.1.0`). A rele
 
 - **Major bump** — breaking format changes. RFC required.
 - **Minor bump** — additive features, backward-compatible format changes.
-- **Patch bump** — bug fixes; no format changes.
+- **Patch bump** — bug fixes in either implementation; both impls bump synchronously.
 
-Implementations may carry impl-local patch versions (e.g., a Rust-only parser bugfix as `0.1.0+rust.1`) but the format version is the shared digit before any `+` suffix. Any change that requires bumping the shared digit requires both impls to ship synchronously.
+**Bug fixes bump both impls synchronously.** If a Rust-only parser bug needs fixing, `mdc-core` and `@mdc/parser` ship the patch bump together; the impl with no actual change publishes a version-only release. This is wasteful by one no-op release per side but keeps the version space coherent and matches the drift policy: both impls advance together, always.
+
+Reason for not using SemVer build metadata (`0.1.0+rust.1` / `0.1.0+ts.2`) for impl-local patches: build-metadata segments are non-ordering by spec, `cargo` rejects them in published versions, and npm treats them as non-comparable — so the distinction wouldn't actually reach users. If a v1 case genuinely needs impl-independent patch versioning, we'll introduce a separate format-version field (analogous to how Rust 1.75 implements Rust 2021 edition). v0 is too simple to need it.
 
 ## Out of scope for v0
 
@@ -161,14 +165,14 @@ The decision "own implementation on `remark` + `unified`" is replaced by "own im
 
 # Decisions (formerly open questions)
 
-1. **Rust host markdown library**: `comrak` with `default-features = false`. User-accepted 2026-05-22. `pulldown-cmark` is the documented fallback if comrak's footprint proves too large. Evidence: [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md).
+1. **Rust host markdown library**: `comrak` with `default-features = false` (tentative; final lock confirmed in Phase 1 after `cargo bloat` / `cargo tree -d` measurement). User-accepted 2026-05-22. Fallback path documented: `pulldown-cmark` with the explicit known cost of a hand-rolled frontmatter stripper + `syntect` wrapper. Evidence: [`docs/research/0003-rust-markdown.md`](../research/0003-rust-markdown.md).
 2. **JS plugin packages**: ship `@mdc/parser` only; plugins as ~30-LOC examples in `docs/examples/`. User-accepted 2026-05-22. Evidence: [`docs/research/0003-js-plugins.md`](../research/0003-js-plugins.md).
 3. **Test bar** (§Test bar above): accepted as written. User-accepted 2026-05-22.
 4. **Rust web framework** for preview server — `axum`, `actix-web`, or `tide`. Deferred until v0 reaches preview-server work.
 
 # Definition of done
 
-- [x] `docs/research/0003-rust-markdown.md` returned: `comrak` recommended (user-accepted 2026-05-22)
+- [x] `docs/research/0003-rust-markdown.md` returned: `comrak` recommended (user-accepted 2026-05-22; final lock pending Phase 1 binary-size measurement)
 - [x] `docs/research/0003-js-plugins.md` returned: ship `@mdc/parser` only (user-accepted 2026-05-22)
 - [x] Test bar accepted (user-accepted 2026-05-22)
 - [x] RFC-0001 §Stack amendment applied
