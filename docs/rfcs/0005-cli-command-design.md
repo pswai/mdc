@@ -106,6 +106,53 @@ In **default (text) mode**, errors go to stderr only; stdout stays silent on err
 
 `byteOffset` is the offset of the **anchor tag** in the source. `lineRange` is 1-indexed, inclusive. `anchor.text` is best-effort reconstruction of the annotated span from the source-text-before-the-anchor; consumers should treat it as a hint, not a contract.
 
+## Anchoring conflict + disambiguation
+
+Commands that anchor by quoted body text (`mdc comment`, `mdc suggest`) require the text to identify a **single** location. The default behavior is **fail-loud** when the text appears zero or more than once — never silently pick. This preserves correctness (RFC-0001 Decision 3) but is unforgiving in prose where phrases repeat.
+
+To make ambiguity recoverable in one step, MDC provides:
+
+**1. Disambiguation flags.** Available on `mdc comment` and `mdc suggest`:
+
+| Flag                        | Behavior                                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--line <N>`                | Constrain matches to line N (1-indexed)                                                                   |
+| `--occurrence <N>`          | Pick the Nth match (1-indexed), applied **after** other filters                                           |
+| `--after "<context>"`       | Match first occurrence whose start byte is **after** the first occurrence of `<context>` in the body      |
+| `--before "<context>"`      | Match last occurrence whose end byte is **before** the last occurrence of `<context>` in the body         |
+| `--offset <N>`              | Exact byte offset of the match start. Quoted text is **validated** against actual content there (sanity check, not searched). Primary path for agents that have parsed the file |
+
+Flags combine with AND logic. Example: `--line 12 --after "slept"` means "on line 12, after the byte position where 'slept' first appears."
+
+If `--offset N` is given and the byte content at that offset doesn't match the quoted text, exit `3` (conflict) with a "validation failed" message — the agent's offset is stale.
+
+**2. Helpful conflict error.** When the quoted text is ambiguous and no disambiguation flag is given, the error lists every match with line:col + a short context snippet and a hint for which flag to add:
+
+```
+mdc: error: conflict — "the fox" appears 3 times in draft.md
+  match 1 at draft.md:5:1    "the fox jumped over..."
+  match 2 at draft.md:12:8   "...the fox slept while..."
+  match 3 at draft.md:18:1   "the fox returned to..."
+  hint: disambiguate with --occurrence N, --line N, or --after/--before "<context>"
+```
+
+In `--json` mode the matches are surfaced in the error envelope's `context.matches` array:
+
+```json
+{"error": {"code": "conflict", "message": "\"the fox\" appears 3 times", "context": {"matches": [
+  {"line": 5, "col": 1, "snippet": "the fox jumped over...", "offset": 81},
+  {"line": 12, "col": 8, "snippet": "...the fox slept while...", "offset": 245},
+  {"line": 18, "col": 1, "snippet": "the fox returned to...", "offset": 422}
+]}}}
+```
+
+**What is explicitly rejected:**
+
+- *Silent first-match default* (`--first` / "I don't care which") — corrupts correctness for ambiguous cases; if you don't know which span you mean, you don't know what you're commenting on
+- *Interactive TTY prompts* — couples to terminal-attached; breaks programmatic invocation and CI tests
+- *Fuzzy matching* — silent corruption is worse than a loud error
+- *Multi-step API* (`mdc resolve-anchor` → `mdc comment --anchor <id>`) — round-trip waste; the flag set above is cleaner
+
 # Commands
 
 ## `mdc read`
@@ -163,57 +210,98 @@ mdc list draft.md --json --kind annotation | jq '.items[] | .id'   # IDs of open
 ## `mdc comment`
 
 ```
-mdc comment <file> "<quoted-text>" "<body>" [--reply-to <id>] [--by <human|ai>] [--json]
+mdc comment <file> "<quoted-text>" "<body>"
+  [--reply-to <id>] [--by <human|ai>] [--json]
+  [--line <N>] [--occurrence <N>] [--after "<context>"] [--before "<context>"] [--offset <N>]
 ```
 
-Anchor a comment to the first occurrence of `<quoted-text>` in the file body (after MDC tags are stripped for matching). If `--reply-to <id>` is given, the comment is appended to the existing annotation thread rather than creating a new anchor; in this case `<quoted-text>` may be empty (`""`).
+Anchor a comment to a unique occurrence of `<quoted-text>` in the file body (after MDC tags are stripped for matching). If `--reply-to <id>` is given, the comment is appended to the existing annotation thread rather than creating a new anchor; in this case `<quoted-text>` may be empty (`""`).
 
-If `<quoted-text>` is non-empty and matches zero or more-than-one places in the body, exit `5` (conflict). The text-mode error suggests using `--reply-to` or a more specific quote.
+If `<quoted-text>` matches zero or more-than-one locations and no disambiguation flag narrows the match to a single one, exit `3` (conflict). The error lists every match with line:col + a context snippet — see §Anchoring conflict + disambiguation.
 
-| Arg / Flag             | Semantics                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| `<file>`               | Path                                                                                 |
-| `<quoted-text>`        | Body text to anchor to. Empty string allowed only with `--reply-to`                  |
-| `<body>`               | Comment body. May contain newlines (use shell heredocs or `$(< file)`)               |
-| `--reply-to <id>`      | Append to existing annotation with this ID instead of creating a new anchor          |
-| `--by <human\|ai>`     | Author tag. Default: `MDC_AUTHOR` env var if set, else `human`                       |
-| `--json`               | Print the resulting Annotation JSON on stdout                                        |
+| Arg / Flag                | Semantics                                                                                |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `<file>`                  | Path                                                                                     |
+| `<quoted-text>`           | Body text to anchor to. Empty string allowed only with `--reply-to`                      |
+| `<body>`                  | Comment body. May contain newlines (use shell heredocs or `$(< file)`)                   |
+| `--reply-to <id>`         | Append to existing annotation with this ID instead of creating a new anchor              |
+| `--by <human\|ai>`        | Author tag. Default: `MDC_AUTHOR` env var if set, else `human`                           |
+| `--line <N>`              | Constrain match to line N (1-indexed). See §Anchoring conflict + disambiguation          |
+| `--occurrence <N>`        | Pick the Nth match (1-indexed) after other filters                                       |
+| `--after "<context>"`     | Match first occurrence after the first occurrence of `<context>` in the body             |
+| `--before "<context>"`    | Match last occurrence before the last occurrence of `<context>` in the body              |
+| `--offset <N>`            | Exact byte offset; quoted text validated against the byte content there. Agent-primary   |
+| `--json`                  | Print the resulting Annotation JSON on stdout                                            |
 
-Exit codes: `0` ok; `1` runtime; `3` conflict (quoted text not unique); `4` not-found (reply-to id missing) or wrong-kind (reply-to refers to a suggestion); `5` invalid-input (`-->` in `<body>`).
+Exit codes: `0` ok; `1` runtime; `3` conflict (quoted text not unique, or `--offset` validation failed); `4` not-found (reply-to id missing) or wrong-kind (reply-to refers to a suggestion); `5` invalid-input (`-->` in `<body>`).
 
 **Examples:**
 
 ```sh
+# Unique anchor — works as before
 mdc comment draft.md "the lazy dog" "Consider 'sleeping' if literal."
+
+# Reply to existing thread (no anchor concern)
 mdc comment draft.md "" "follow-up" --reply-to a1f7q3
-MDC_AUTHOR=ai mdc comment draft.md "the fox" "Add a beat here?" --json
-mdc comment draft.md "the cat" "$(< thoughts.md)"
+
+# Ambiguous "the fox" — disambiguate by line
+mdc comment draft.md "the fox" "consider rewrite" --line 12
+
+# Disambiguate by surrounding context
+mdc comment draft.md "the fox" "consider rewrite" --after "slept while"
+
+# Pick the second occurrence
+mdc comment draft.md "the fox" "consider rewrite" --occurrence 2
+
+# Agent path: byte offset from a prior parse, text validated
+mdc comment draft.md "the fox" "rewrite" --offset 245 --by ai
+
+# Long body from file, with disambiguation
+MDC_AUTHOR=ai mdc comment draft.md "the fox" "$(< thoughts.md)" --line 12 --json
 ```
 
 ## `mdc suggest`
 
 ```
-mdc suggest <file> "<old-text>" "<new-text>" [--by <human|ai>] [--json]
+mdc suggest <file> "<old-text>" "<new-text>"
+  [--by <human|ai>] [--json]
+  [--line <N>] [--occurrence <N>] [--after "<context>"] [--before "<context>"] [--offset <N>]
 ```
 
-Add a suggestion replacing `<old-text>` with `<new-text>`. `<old-text>` must appear exactly once in the body (after MDC tag-strip). Wire format follows RFC-0002 §5 (`old:` / `new:` blocks).
+Add a suggestion replacing `<old-text>` with `<new-text>`. `<old-text>` must identify a single occurrence in the body (after MDC tag-strip). Disambiguation flags work as on `mdc comment` — see §Anchoring conflict + disambiguation. Wire format follows RFC-0002 §5 (`old:` / `new:` blocks).
 
-| Arg / Flag           | Semantics                                                                |
-| -------------------- | ------------------------------------------------------------------------ |
-| `<file>`             | Path                                                                     |
-| `<old-text>`         | Body span to replace. Must appear exactly once                           |
-| `<new-text>`         | Replacement text. May be empty (= pure deletion)                         |
-| `--by <human\|ai>`   | Author tag. Default: `MDC_AUTHOR` env var if set, else `human`           |
-| `--json`             | Print the resulting Suggestion JSON on stdout                            |
+| Arg / Flag                | Semantics                                                                                |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `<file>`                  | Path                                                                                     |
+| `<old-text>`              | Body span to replace. Must identify a unique occurrence (use disambiguation flags if not) |
+| `<new-text>`              | Replacement text. May be empty (= pure deletion)                                         |
+| `--by <human\|ai>`        | Author tag. Default: `MDC_AUTHOR` env var if set, else `human`                           |
+| `--line <N>`              | Constrain match to line N                                                                |
+| `--occurrence <N>`        | Pick the Nth match (1-indexed) after other filters                                       |
+| `--after "<context>"`     | Match first occurrence after the first `<context>`                                       |
+| `--before "<context>"`    | Match last occurrence before the last `<context>`                                        |
+| `--offset <N>`            | Exact byte offset; old text validated against actual content                             |
+| `--json`                  | Print the resulting Suggestion JSON on stdout                                            |
 
-Exit codes: `0` ok; `1` runtime; `3` conflict (old text not unique); `5` invalid-input (`-->` in old/new).
+Exit codes: `0` ok; `1` runtime; `3` conflict (old text not unique, or `--offset` validation failed); `5` invalid-input (`-->` in old/new).
 
 **Examples:**
 
 ```sh
+# Unique old text — works as before
 mdc suggest draft.md "The fox ran away." "The fox darted into the brush."
-mdc suggest draft.md "$(< old.txt)" "$(< new.txt)" --by ai
-mdc suggest draft.md "extra paragraph to remove" ""
+
+# "didnt" appears many times; target one occurrence by line
+mdc suggest draft.md "didnt" "didn't" --line 42
+
+# Agent path with byte offset, text validated for safety
+mdc suggest draft.md "didnt" "didn't" --offset 1280 --by ai
+
+# Pure deletion of a duplicate sentence on a specific line
+mdc suggest draft.md "extra paragraph to remove" "" --line 27
+
+# Long old/new via files, disambiguated by context
+mdc suggest draft.md "$(< old.txt)" "$(< new.txt)" --after "Section 3" --by ai
 ```
 
 ## `mdc accept`
@@ -224,7 +312,7 @@ mdc accept <file> <id> [--json]
 
 Apply the suggestion identified by `<id>`: replace the `old` text in the body with `new`, then remove the suggestion's `<!--mdc:sug-->` tag. The file is byte-stable except for the replaced span and the removed tag.
 
-If the `old` text no longer matches the current body (because the surrounding text was edited concurrently), exit `5` and print a unified diff of `expected` vs `found` to stderr. **Never auto-merge** — RFC-0001 Decision 3.
+If the `old` text no longer matches the current body (because the surrounding text was edited concurrently), exit `3` and print a unified diff of `expected` vs `found` to stderr. **Never auto-merge** — RFC-0001 Decision 3.
 
 | Arg / Flag | Semantics                                                            |
 | ---------- | -------------------------------------------------------------------- |
@@ -368,7 +456,7 @@ mdc: error: <code> — <short reason>
   <context: expected vs found, suggestion, etc.>
 ```
 
-Example:
+Examples:
 
 ```
 mdc: error: conflict — old text no longer matches
@@ -376,6 +464,14 @@ mdc: error: conflict — old text no longer matches
   expected: "The fox ran away."
   found:    "The fox slipped into the brush."
   hint: the surrounding text was edited; review with `mdc list draft.md` and either edit the file to restore the old span or `mdc reject` this suggestion.
+```
+
+```
+mdc: error: conflict — "the fox" appears 3 times in draft.md
+  match 1 at draft.md:5:1    "the fox jumped over..."
+  match 2 at draft.md:12:8   "...the fox slept while..."
+  match 3 at draft.md:18:1   "the fox returned to..."
+  hint: disambiguate with --occurrence N, --line N, or --after/--before "<context>"
 ```
 
 **JSON mode** (stderr): the error envelope shape under §`--json` output discipline.
