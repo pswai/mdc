@@ -52,7 +52,7 @@ export function parse(source: string, filename = '<input>'): ParseResult {
       kind: 'annotation',
       id,
       status,
-      anchor: deriveAnchor(source, tag),
+      anchor: deriveAnchor(source, tag, tags),
       comments: [],
       sourceRange: [tag.sourceStart, tag.sourceEnd],
     });
@@ -78,7 +78,7 @@ export function parse(source: string, filename = '<input>'): ParseResult {
         kind: 'suggestion',
         id,
         by: parseAuthor(tag, 'by', filename),
-        anchor: deriveAnchor(source, tag),
+        anchor: deriveAnchor(source, tag, tags),
         old,
         new: newText,
         sourceRange: [tag.sourceStart, tag.sourceEnd],
@@ -209,15 +209,43 @@ function parseSuggestionBody(tag: RawTag, filename: string): { old: string; new:
   return { old, new: newText };
 }
 
-function deriveAnchor(source: string, tag: RawTag): { byteOffset: number; lineRange: [number, number]; text: string } {
-  // Walk back from tag start through whitespace, then capture up to 80 chars of preceding text.
-  let i = tag.sourceStart;
-  while (i > 0 && /\s/.test(source[i - 1])) i--;
-  const lookbackStart = Math.max(0, i - 120);
-  const before = source.slice(lookbackStart, i);
-  // Prefer the last sentence; fall back to the last 60 chars.
-  const sentenceMatch = before.match(/([.!?]\s+)?([^.!?\n]{1,80})$/);
-  const text = (sentenceMatch ? sentenceMatch[2] : before.slice(-60)).trim();
+function deriveAnchor(
+  source: string,
+  tag: RawTag,
+  allTags: RawTag[],
+): { byteOffset: number; lineRange: [number, number]; text: string } {
+  // Build a "clean preceding text" by walking source up to tag.sourceStart and
+  // skipping any other mdc:* tag ranges. This avoids leaking tag bodies into the
+  // anchor.text snippet.
+  const ranges = allTags
+    .filter((t) => t !== tag && t.sourceEnd <= tag.sourceStart)
+    .map((t) => [t.sourceStart, t.sourceEnd] as const)
+    .sort((a, b) => a[0] - b[0]);
+
+  let clean = '';
+  let cur = 0;
+  for (const [s, e] of ranges) {
+    if (s >= tag.sourceStart) break;
+    clean += source.slice(cur, s);
+    cur = e;
+  }
+  clean += source.slice(cur, tag.sourceStart);
+  clean = clean.replace(/\s+$/, '');
+  // Take the last non-empty line — that's the anchored sentence/phrase.
+  const lines = clean.split('\n');
+  let lastLine = '';
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed !== '') {
+      lastLine = trimmed;
+      break;
+    }
+  }
+  // If the line has multiple sentences, take just the last (more focused snippet).
+  const sentenceMatch = lastLine.match(/[^.!?]*[.!?]?$/);
+  let last = sentenceMatch ? sentenceMatch[0].trim() : lastLine;
+  if (last === '') last = lastLine; // sentence-end with no body — keep full line
+  const text = last.length > 120 ? '…' + last.slice(-119) : last;
   return {
     byteOffset: tag.sourceStart,
     lineRange: [tag.line, tag.line],
@@ -278,4 +306,22 @@ export function collectIds(result: ParseResult): Set<string> {
   for (const a of result.annotations) ids.add(a.id);
   for (const s of result.suggestions) ids.add(s.id);
   return ids;
+}
+
+/**
+ * Returns the annotations + suggestions a user actually wants to see, filtering
+ * out the "companion anchor" annotations that exist solely to position a suggestion.
+ *
+ * A companion anchor is an annotation that:
+ *   - shares its ID with a suggestion, AND
+ *   - has zero comments (its only purpose is to anchor the suggestion)
+ *
+ * Real discussion threads (annotations with comments) survive the filter.
+ */
+export function displayableItems(result: ParseResult): Array<Annotation | Suggestion> {
+  const suggestionIds = new Set(result.suggestions.map((s) => s.id));
+  const visibleAnnotations = result.annotations.filter(
+    (a) => !(suggestionIds.has(a.id) && a.comments.length === 0),
+  );
+  return [...visibleAnnotations, ...result.suggestions];
 }

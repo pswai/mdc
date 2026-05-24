@@ -82,11 +82,13 @@ export async function suggestCmd(argv: string[], ctx: CliContext): Promise<ExitC
   // The browser UI will render the inline diff at the anchor.start position.
   const lineEnd = source.indexOf('\n', anchor.start);
   const insertOffset = lineEnd === -1 ? source.length : lineEnd;
-  // Prefix the suggestion tag with " <!--mdc:ann...-->"-style inline anchor so we know where the old text is.
-  // Simpler: put a small anchor inline + suggestion block on its own paragraph below.
-  const anchorOffset = anchor.start + oldText.length;
+  // Inline anchor goes after the old text, extending past trailing sentence punctuation.
+  let anchorOffset = anchor.start + oldText.length;
+  while (anchorOffset < source.length && /[.!?,:;…]/.test(source[anchorOffset])) {
+    anchorOffset++;
+  }
   const nextChar = source[anchorOffset];
-  const inline = (nextChar === ' ' || nextChar === '\n' ? '' : ' ') + `<!--mdc:ann id=${id} status=open-->`;
+  const inline = (nextChar === ' ' || nextChar === '\n' || nextChar === undefined ? '' : ' ') + `<!--mdc:ann id=${id} status=open-->`;
   let final = insertAt(source, anchorOffset, inline);
   const newLineEnd = final.indexOf('\n', insertOffset + inline.length);
   const blockInsertAt = newLineEnd === -1 ? final.length : newLineEnd;

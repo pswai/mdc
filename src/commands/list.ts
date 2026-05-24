@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { parse, ParseError } from '../parser.js';
+import { parse, ParseError, displayableItems } from '../parser.js';
 import { parseArgs, stringFlag } from '../args.js';
 import {
   reportError,
@@ -45,18 +45,16 @@ export async function listCmd(argv: string[], ctx: CliContext): Promise<ExitCode
     throw e;
   }
 
-  const items: (typeof r.annotations[number] | typeof r.suggestions[number])[] = [];
-  if (kind === 'annotation' || kind === 'all') {
-    for (const a of r.annotations) {
-      if (status === 'all' || a.status === status) items.push(a);
+  const all = displayableItems(r);
+  const items = all.filter((item) => {
+    if (kind === 'annotation' && item.kind !== 'annotation') return false;
+    if (kind === 'suggestion' && item.kind !== 'suggestion') return false;
+    if (item.kind === 'annotation') {
+      return status === 'all' || item.status === status;
     }
-  }
-  if (kind === 'suggestion' || kind === 'all') {
-    for (const s of r.suggestions) {
-      // suggestions don't have status; treat as 'open' for filtering
-      if (status === 'open' || status === 'all') items.push(s);
-    }
-  }
+    // suggestions don't have status; treat as open
+    return status === 'open' || status === 'all';
+  });
 
   if (ctx.json) {
     writeJson({ items: items.map(itemToJson) });

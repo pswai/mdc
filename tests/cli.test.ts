@@ -96,15 +96,15 @@ describe('CLI: list', () => {
     assert.match(r.stdout, /s1abcd.*suggestion/);
   });
 
-  test('list --json emits envelope', () => {
+  test('list --json emits envelope; companion anchor hidden', () => {
     const r = run(['list', join(FIXTURES, 'basic.md'), '--json']);
     assert.equal(r.code, 0);
     const data = JSON.parse(r.stdout);
     assert.ok(Array.isArray(data.items));
-    // basic.md has 2 annotations (one is the suggestion's companion anchor) + 1 suggestion = 3
-    assert.equal(data.items.length, 3);
-    const suggestionItems = data.items.filter((i: { kind: string }) => i.kind === 'suggestion');
-    assert.equal(suggestionItems.length, 1);
+    // basic.md has 1 real annotation (thread) + 1 suggestion; companion anchor is hidden.
+    assert.equal(data.items.length, 2);
+    const kinds = data.items.map((i: { kind: string }) => i.kind).sort();
+    assert.deepEqual(kinds, ['annotation', 'suggestion']);
   });
 
   test('list --status resolved filters', () => {

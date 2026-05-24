@@ -144,13 +144,17 @@ export async function commentCmd(argv: string[], ctx: CliContext): Promise<ExitC
     throw e;
   }
 
-  // Insert anchor immediately after the matched text
-  const anchorInsertOffset = anchor.start + quotedText.length;
+  // Insert anchor immediately after the matched text, extending past trailing
+  // sentence-end punctuation so we don't visually separate "it" from "." etc.
+  let anchorInsertOffset = anchor.start + quotedText.length;
+  while (anchorInsertOffset < source.length && /[.!?,:;…]/.test(source[anchorInsertOffset])) {
+    anchorInsertOffset++;
+  }
   const nextChar = source[anchorInsertOffset];
-  const inserted = insertAt(source, anchorInsertOffset, (nextChar === ' ' || nextChar === '\n' ? '' : ' ') + anchorTag);
+  const inserted = insertAt(source, anchorInsertOffset, (nextChar === ' ' || nextChar === '\n' || nextChar === undefined ? '' : ' ') + anchorTag);
 
   // Append comment block after the line containing the anchor
-  const afterAnchorOffset = anchorInsertOffset + (nextChar === ' ' || nextChar === '\n' ? 0 : 1) + anchorTag.length;
+  const afterAnchorOffset = anchorInsertOffset + (nextChar === ' ' || nextChar === '\n' || nextChar === undefined ? 0 : 1) + anchorTag.length;
   const lineEnd = inserted.indexOf('\n', afterAnchorOffset);
   const insertCommentAt = lineEnd === -1 ? inserted.length : lineEnd;
   const commentInsert = (insertCommentAt < inserted.length && inserted[insertCommentAt + 1] === '\n' ? '\n' : '\n\n') + commentText;

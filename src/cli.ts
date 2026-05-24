@@ -5,11 +5,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readCmd } from './commands/read.js';
 import { listCmd } from './commands/list.js';
 import { commentCmd } from './commands/comment.js';
+import { replyCmd } from './commands/reply.js';
 import { suggestCmd } from './commands/suggest.js';
 import { acceptCmd } from './commands/accept.js';
 import { rejectCmd } from './commands/reject.js';
 import { resolveCmd } from './commands/resolve.js';
 import { compactCmd } from './commands/compact.js';
+import { inspectCmd } from './commands/inspect.js';
 import type { CliContext, ExitCode } from './output.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,7 +23,9 @@ Usage: mdc <command> [args] [flags]
 Commands:
   read     <file> [--clean]                   Print file (with --clean: strip mdc tags)
   list     <file> [--status S] [--kind K]     List annotations and suggestions
+  inspect  <file> <id>                        Show full detail on one item
   comment  <file> "<text>" "<body>" [...]     Anchor a comment
+  reply    <file> <id> "<body>" [--by ...]    Reply to an existing thread (sugar)
   suggest  <file> "<old>" "<new>" [...]       Anchor a suggestion
   accept   <file> <id>                        Apply a suggestion
   reject   <file> <id>                        Discard a suggestion
@@ -79,7 +83,9 @@ export async function main(rawArgv = process.argv.slice(2)): Promise<ExitCode> {
   switch (cmd) {
     case 'read':    return readCmd(cmdArgv, ctx);
     case 'list':    return listCmd(cmdArgv, ctx);
+    case 'inspect': return inspectCmd(cmdArgv, ctx);
     case 'comment': return commentCmd(cmdArgv, ctx);
+    case 'reply':   return replyCmd(cmdArgv, ctx);
     case 'suggest': return suggestCmd(cmdArgv, ctx);
     case 'accept':  return acceptCmd(cmdArgv, ctx);
     case 'reject':  return rejectCmd(cmdArgv, ctx);

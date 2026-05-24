@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { marked } from 'marked';
 
-import { parse, ParseError } from './parser.js';
+import { parse, ParseError, displayableItems } from './parser.js';
 import type { Annotation, Suggestion } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -174,11 +174,12 @@ async function apiState(res: ServerResponse, file: string): Promise<void> {
   // from the rendered body (they appear in the side panel).
   const renderableSource = preRender(parsed);
   const html = marked.parse(renderableSource, { async: false }) as string;
+  const visible = displayableItems(parsed);
   respondJson(res, 200, {
     file,
     html,
-    annotations: parsed.annotations.map(asJson),
-    suggestions: parsed.suggestions.map(asJson),
+    annotations: visible.filter((i): i is Annotation => i.kind === 'annotation').map(asJson),
+    suggestions: visible.filter((i): i is Suggestion => i.kind === 'suggestion').map(asJson),
   });
 }
 
