@@ -101,9 +101,10 @@ describe('CLI: list', () => {
     assert.equal(r.code, 0);
     const data = JSON.parse(r.stdout);
     assert.ok(Array.isArray(data.items));
-    assert.equal(data.items.length, 2);
-    const kinds = data.items.map((i: { kind: string }) => i.kind).sort();
-    assert.deepEqual(kinds, ['annotation', 'suggestion']);
+    // basic.md has 2 annotations (one is the suggestion's companion anchor) + 1 suggestion = 3
+    assert.equal(data.items.length, 3);
+    const suggestionItems = data.items.filter((i: { kind: string }) => i.kind === 'suggestion');
+    assert.equal(suggestionItems.length, 1);
   });
 
   test('list --status resolved filters', () => {

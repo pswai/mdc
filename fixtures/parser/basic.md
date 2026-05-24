@@ -10,7 +10,9 @@ Is "lazy" the right word here?
 Consider "sleeping" if literal, "indolent" if behavioral.
 -->
 
-The fox ran away. <!--mdc:sug id=s1abcd by=ai
+The fox ran away.<!--mdc:ann id=s1abcd status=open-->
+
+<!--mdc:sug id=s1abcd by=ai
 old:
 The fox ran away.
 new:

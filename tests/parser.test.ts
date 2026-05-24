@@ -16,13 +16,14 @@ function loadFixture(name: string): string {
 }
 
 describe('parser: basic structure', () => {
-  test('parses one annotation, two comments, one suggestion', () => {
+  test('parses annotations, comments, and suggestion (with companion anchor)', () => {
     const src = loadFixture('basic.md');
     const r = parse(src, 'basic.md');
-    assert.equal(r.annotations.length, 1);
+    // basic.md has two annotations: a1f7q3 (thread) and s1abcd (suggestion's companion anchor),
+    // plus the s1abcd suggestion block. The suggestion shares its ID with the companion anchor.
+    assert.equal(r.annotations.length, 2);
     assert.equal(r.suggestions.length, 1);
-    const ann = r.annotations[0];
-    assert.equal(ann.id, 'a1f7q3');
+    const ann = r.annotations.find((a) => a.id === 'a1f7q3')!;
     assert.equal(ann.status, 'open');
     assert.equal(ann.comments.length, 2);
     assert.equal(ann.comments[0].by, 'human');

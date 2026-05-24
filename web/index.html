@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mdc serve</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">mdc</div>
+      <div id="filename" class="filename">—</div>
+      <div id="status" class="status" data-state="connecting">connecting…</div>
+    </header>
+
+    <main class="layout">
+      <article id="doc" class="doc"></article>
+      <aside id="rail" class="rail"></aside>
+    </main>
+
+    <template id="tpl-thread">
+      <div class="thread" data-id="">
+        <div class="thread-header">
+          <span class="thread-id"></span>
+          <span class="thread-status"></span>
+          <button class="thread-resolve" title="Resolve (E)">resolve</button>
+        </div>
+        <div class="thread-comments"></div>
+        <form class="thread-reply">
+          <textarea name="body" rows="2" placeholder="Reply…"></textarea>
+          <div class="thread-reply-actions">
+            <label><input type="radio" name="by" value="human" checked /> as human</label>
+            <label><input type="radio" name="by" value="ai" /> as ai</label>
+            <button type="submit">reply</button>
+          </div>
+        </form>
+      </div>
+    </template>
+
+    <template id="tpl-suggestion">
+      <div class="suggestion" data-id="">
+        <div class="thread-header">
+          <span class="thread-id"></span>
+          <span class="thread-status">suggestion</span>
+        </div>
+        <div class="suggestion-diff">
+          <div class="sug-old"></div>
+          <div class="sug-new"></div>
+        </div>
+        <div class="suggestion-actions">
+          <button class="sug-accept">accept</button>
+          <button class="sug-reject">reject</button>
+        </div>
+      </div>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
