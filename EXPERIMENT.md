@@ -107,3 +107,130 @@ feat/rfc-0006  (open PR #4 — unchanged)
 ```
 
 Nothing here was merged to main. If you want any of this — pick what's useful, leave what isn't. Or merge the whole branch and treat it as the v0 starting point.
+
+---
+
+# Continuation: Browser Dogfood + CRDT Exploration
+
+Second autonomous pass on 2026-05-24. Goal expanded to: actually drive the browser via `agent-browser`, explore CRDT-based collaboration, prototype "Google-Docs-for-markdown."
+
+## What I did
+
+### 1. Drove the actual browser
+
+Opened `mdc serve demo/blog-draft.md` and used `agent-browser` to take screenshots through a real `comment → suggest → accept → reply` loop. Three things worth surfacing:
+
+- **SSE live reload works as expected.** CLI writes from the terminal immediately appear in the browser without refresh.
+- **Real bug found:** suggestions were rendering as a plain yellow highlight on the body (same treatment as comments), with the diff only visible in the side rail. **RFC-0006 actually specified inline Google-Docs-Suggesting style** — strikethrough old + colored insert new, inline. I'd built only half of it. Fixed in `web/app.js` + `web/styles.css` (commit `e9083f9`): when the wrapped target text ends with the suggestion's `old`, wrap exactly that span with a strikethrough mark and append an `<ins>` sibling with `sug.new` in green. Verified visually — looks right.
+- **Soft bug:** the side rail re-renders fully on every SSE event (`rail.innerHTML = ''` → re-create). Breaks focus and breaks the agent-browser snapshot refs. In production this would also flash the user's open thread. Should use a key-based reconciliation (data-id → patch instead of replace). Not fixed in this pass — noted for whoever picks it up.
+
+### 2. CRDT prototype at `/collab`
+
+Added Yjs as a dependency, built a minimal Y.js-over-WebSocket collaboration mode at a NEW route `/collab`. The existing read+annotate UI at `/` is untouched.
+
+**Architecture:**
+
+```
+Browser tab A ──┐           ┌── Browser tab B
+                │           │
+                ▼           ▼
+              ws ws://host/api/y/<file>
+                │           │
+                └─► mdc serve ◄─┘
+                      │
+                      ▼
+                  Y.Doc (one per file)
+                      │
+                      │  ytext.observe + 500ms debounce
+                      ▼
+                  writeFile (.md on disk)
+```
+
+**Wire protocol (deliberately tiny, NOT y-websocket):** on connect, server sends `Y.encodeStateAsUpdate(doc)`; subsequent client messages are treated as `Y.applyUpdate` payloads, server applies locally then broadcasts to other clients. ~80 LOC server-side.
+
+**Client (web/collab.js):** Plain `<textarea>` backed by `Y.Text`. On `input`, compute a tiny prefix/suffix diff between textarea and ytext, apply as `ytext.delete + ytext.insert`. On remote update, mirror ytext back to textarea (preserve selection best-effort).
+
+**Bundling caveat:** `yjs.mjs` shipped in the npm package isn't a browser-ready bundle — has bare `lib0/observable` imports. Pre-bundled with `npx esbuild --bundle --format=esm` into `web/yjs.mjs` (266 KB). One-time build step; not in package scripts yet.
+
+### 3. Verified the two-tab demo with agent-browser
+
+Opened two named sessions (`tab1`, `tab2`), pointed both at `/collab`, typed in one, observed the other's textarea update via Y.js sync. File on disk got rewritten ~500ms after edits settled. Screenshots in the conversation log if you want to see them.
+
+## What this answers about "markdown-based Google Doc"
+
+**Short answer: yes, the plumbing works. The hard parts are not the CRDT.**
+
+The 90 minutes of integration above proved that:
+
+- Yjs as the live runtime: trivial. ~150 LOC total across server + client for basic shared editing.
+- File-on-disk as the canonical persistence: works on the *outbound* leg (CRDT → file) with simple debounce.
+- Multi-tab sync: works first try once the bundle issue is fixed.
+
+What it did **not** answer:
+
+1. **Anchored annotations vs. live text edits.** MDC's anchor model is byte offsets in a snapshot of the file. The moment text shifts under an anchor (someone else inserts a paragraph above), the anchor points at the wrong span. Yjs ships exactly the primitive needed (`Y.RelativePosition` — a position that travels with the text it's anchored to), but wiring it into MDC's HTML-comment format is real work. The annotation would need to live as **CRDT-side metadata** during a live session, then re-serialize to the markdown anchor on session end. That's a meaningful redesign, not a small fix.
+
+2. **External-file → CRDT direction.** If someone edits the .md file in VSCode while a collab session is live, the file watcher fires but the CRDT doesn't know what to do. Real apps (tiny-essay-editor, etc.) sidestep this by making the CRDT primary and never trusting external edits. That conflicts with Manifesto Commitment 1.
+
+3. **Presence (cursors, selections).** Not implemented. Y.js has `awareness` for this; client + server need ~20 LOC each.
+
+4. **Authentication.** Right now any browser on `127.0.0.1` can connect. Multi-user means real authn/authz. Out of scope for the experiment, but real for any "Google Doc-like" deployment.
+
+## What this means for the manifesto
+
+The cleanest framing I can offer: **Commitment 1 ("the file is the truth") and live multi-user collaboration are in genuine tension, and the experiment surfaces the choice.**
+
+Three coherent positions:
+
+- **A. Single-writer-at-a-time (current manifesto).** Live multi-user collab is out of scope forever. The collab mode I built is a curiosity that violates the commitment. Delete it.
+- **B. File-is-truth, sessions are ephemeral.** What I built. CRDT is a transient layer for live editing; on session-end the CRDT collapses to a file. Annotations get re-anchored on serialize. External edits trigger session-end (warn users). Works, but messy at the seams.
+- **C. CRDT-is-truth, file is an export view.** Like tiny-essay-editor. Loses Commitment 1 explicitly but gains real multi-user. Probably what's needed to actually rival Google Docs for prose.
+
+The experiment leans (B) is feasible without a manifesto rewrite, but (C) is what "markdown-native Google Docs" actually means.
+
+## What this branch is and isn't
+
+Adds:
+- `src/collab.ts` (~110 LOC) — Y.Doc + WebSocket hub
+- `web/collab.html`, `web/collab.js` (~90 LOC) — bare-bones shared textarea
+- `web/yjs.mjs` (266 KB bundled, gitignored is debatable — included for now so the demo works without npx)
+- 3 new runtime deps: `yjs`, `ws`, `@types/ws`. 7 packages total in node_modules (still small).
+- Inline suggestion UI fix in `web/app.js` + `web/styles.css`
+
+Doesn't add (deliberate):
+- Test coverage for collab — the demo IS the test for now; would need WebSocket fixtures + a Y.js mock for proper CI
+- Presence / cursors
+- Anchored-annotation drift handling (the load-bearing missing piece)
+- External-file → CRDT merge
+
+## How to run the new bits
+
+```sh
+git checkout experiment/autonomous-iteration
+npm install     # picks up yjs + ws
+npm run build
+node dist/src/cli.js serve demo/blog-draft.md
+# Open http://127.0.0.1:8421/        — read + annotate UI
+# Open http://127.0.0.1:8421/collab  — CRDT-shared textarea
+# Open /collab in a second tab — type in one, watch the other update
+```
+
+## Recommendations from this pass
+
+1. **Decide A / B / C above.** Until the manifesto says which world MDC lives in, the format design will keep tripping over collab questions. (B) seems pragmatic but doesn't fix the anchored-annotation problem.
+2. **If (B) or (C), spike the anchored-annotation drift problem next.** It's the load-bearing missing piece. Y.js `RelativePosition` is the primitive. Allocate at least a week.
+3. **Fix the inline suggestion display in v0.** I already did this in commit `e9083f9`; just port the same idea (don't only show diff in side rail) into the canonical RFC-0006 spec.
+4. **Fix the side-rail re-render flash.** Tiny but kills the polish.
+
+## Updated branch state
+
+```
+experiment/autonomous-iteration
+├── ... (original 6 commits)
+├── e9083f9  experiment(ui): inline strikethrough + insert for suggestions
+├── <crdt commit>  experiment(collab): Yjs CRDT at /collab
+└── <this report commit>  experiment(report): browser + CRDT findings
+```
+
+Branch is still isolated from main. Nothing here has been reviewed, merged, or even particularly hardened — these are findings to inform decisions, not code to ship.
+
