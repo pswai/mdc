@@ -141,9 +141,23 @@ mark.mdc-anchor-highlight.status-resolved {
   background: var(--resolved-soft);
   border-bottom-color: var(--border);
 }
-mark.mdc-anchor-highlight.kind-suggestion .sug-strike {
+mark.mdc-anchor-highlight.kind-suggestion {
   text-decoration: line-through;
   text-decoration-color: #c43a3a;
+  text-decoration-thickness: 1.5px;
+}
+ins.mdc-inline-insert {
+  background: #d9f0d0;
+  color: #1a4d1a;
+  text-decoration: none;
+  padding: 0 3px;
+  border-radius: 2px;
+  margin-left: 2px;
+  cursor: pointer;
+}
+ins.mdc-inline-insert:hover { background: var(--suggestion); }
+@media (prefers-color-scheme: dark) {
+  ins.mdc-inline-insert { background: #28402a; color: #c0eac0; }
 }
 mark.mdc-anchor-highlight.is-active {
   outline: 2px solid var(--accent);

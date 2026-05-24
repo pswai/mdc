@@ -48,7 +48,7 @@ function renderDoc(html) {
 }
 
 function onDocClick(e) {
-  const mark = e.target.closest('mark.mdc-anchor-highlight');
+  const mark = e.target.closest('mark.mdc-anchor-highlight, ins.mdc-inline-insert');
   if (!mark) return;
   const id = mark.dataset.id;
   setActive(id, { scrollIntoView: 'rail' });
@@ -82,10 +82,23 @@ function wrapHighlight(target, id, kind, status) {
   if (target.kind === 'text') {
     const node = target.node;
     const text = node.textContent;
-    // Choose how much to wrap. Heuristic: if text ends with punctuation+space (sentence end),
-    // wrap the trailing sentence fragment. Otherwise wrap the last 6 words.
-    const m = text.match(/[^.!?\n]{1,80}$/);
-    const wrapText = m ? m[0].replace(/^\s+/, '') : text;
+
+    // For suggestions, prefer wrapping the exact `old` text from state so the
+    // strikethrough lines up with what's actually proposed for replacement.
+    let wrapText;
+    let inlineNew = null;
+    if (kind === 'suggestion') {
+      const sug = state.suggestions.find((s) => s.id === id);
+      if (sug && text.endsWith(sug.old)) {
+        wrapText = sug.old;
+        inlineNew = sug.new;
+      }
+    }
+    if (!wrapText) {
+      const m = text.match(/[^.!?\n]{1,80}$/);
+      wrapText = m ? m[0].replace(/^\s+/, '') : text;
+    }
+
     const wrapStart = text.length - wrapText.length;
     const before = text.slice(0, wrapStart);
     const beforeNode = document.createTextNode(before);
@@ -93,9 +106,18 @@ function wrapHighlight(target, id, kind, status) {
     mark.className = cls;
     mark.dataset.id = id;
     mark.textContent = wrapText;
-    node.replaceWith(beforeNode, mark);
+
+    const nodes = [beforeNode, mark];
+    if (inlineNew !== null) {
+      const sep = document.createTextNode(' ');
+      const ins = document.createElement('ins');
+      ins.className = 'mdc-inline-insert';
+      ins.dataset.id = id;
+      ins.textContent = inlineNew;
+      nodes.push(sep, ins);
+    }
+    node.replaceWith(...nodes);
   } else {
-    // Element: just append a class — less precise, but at least styled.
     target.node.classList.add('mdc-anchor-highlight', `kind-${kind}`, `status-${status}`);
     target.node.dataset.id = id;
   }
