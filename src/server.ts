@@ -8,6 +8,7 @@ import { marked } from 'marked';
 
 import { parse, ParseError, displayableItems } from './parser.js';
 import type { Annotation, Suggestion } from './types.js';
+import { CollabHub } from './collab.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // dist/src/server.js → repo root is two levels up
@@ -25,6 +26,7 @@ export interface ServeOptions {
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.json': 'application/json; charset=utf-8',
@@ -70,6 +72,9 @@ export async function startServer(opts: ServeOptions): Promise<{ stop: () => Pro
     }
   });
 
+  const collab = new CollabHub();
+  collab.attach(server);
+
   await new Promise<void>((res, rej) => {
     server.once('error', rej);
     server.listen(opts.port, opts.bind, () => res());
@@ -81,6 +86,7 @@ export async function startServer(opts: ServeOptions): Promise<{ stop: () => Pro
     port: actualPort,
     stop: async () => {
       watcher.close();
+      collab.shutdown();
       for (const c of sseClients) {
         try { c.res.end(); } catch { /* noop */ }
       }
@@ -105,8 +111,16 @@ async function handleRequest(
     await serveStatic(res, 'index.html');
     return;
   }
-  if (method === 'GET' && (path === '/app.js' || path === '/styles.css')) {
+  if (method === 'GET' && path === '/collab') {
+    await serveStatic(res, 'collab.html');
+    return;
+  }
+  if (method === 'GET' && (path === '/app.js' || path === '/styles.css' || path === '/collab.js' || path === '/yjs.mjs')) {
     await serveStatic(res, path.slice(1));
+    return;
+  }
+  if (method === 'GET' && path === '/api/file-path') {
+    respondJson(res, 200, { file: opts.file });
     return;
   }
 

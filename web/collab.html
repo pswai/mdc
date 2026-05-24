@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mdc collab</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .collab-layout {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      .collab-banner {
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        padding: 0.6rem 0.9rem;
+        margin-bottom: 1rem;
+        font-size: 0.92rem;
+      }
+      .collab-textarea {
+        width: 100%;
+        min-height: 60vh;
+        font-family: ui-monospace, SF Mono, Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.55;
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.2rem;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+      .peers {
+        display: inline-flex;
+        gap: 0.4rem;
+        margin-left: 1rem;
+      }
+      .peer-dot {
+        width: 0.7rem;
+        height: 0.7rem;
+        border-radius: 50%;
+        background: #2bb053;
+        display: inline-block;
+      }
+      .collab-footer {
+        margin-top: 0.6rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">mdc</div>
+      <div id="filename" class="filename">collab —</div>
+      <div id="status" class="status" data-state="connecting">connecting…</div>
+    </header>
+    <main class="collab-layout">
+      <div class="collab-banner">
+        <strong>Experimental collab mode.</strong> Type below; every change syncs to every other tab opened on this URL via Y.js CRDT over WebSocket. File on disk is rewritten ~500ms after edits stop. <a href="/">Switch to read+annotate view</a>.
+      </div>
+      <textarea id="editor" class="collab-textarea" spellcheck="false" placeholder="Loading from server…"></textarea>
+      <div class="collab-footer">
+        <span>Peers: <span id="peer-count">1</span><span class="peers" id="peers"></span></span>
+        <span id="sync-state">synced</span>
+        <span id="byte-count">0 bytes</span>
+      </div>
+    </main>
+    <script type="module" src="/collab.js"></script>
+  </body>
+</html>

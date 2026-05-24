@@ -12,7 +12,10 @@
     "demo": "tsc && node dist/src/cli.js"
   },
   "dependencies": {
-    "marked": "^14.1.3"
+    "@types/ws": "^8.18.1",
+    "marked": "^14.1.3",
+    "ws": "^8.21.0",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
